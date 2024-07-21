@@ -1,7 +1,9 @@
 package dczx.axolotl.espwand.util;
 
+import dczx.axolotl.espwand.entity.Actions;
 import dczx.axolotl.espwand.entity.XYZ;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -13,7 +15,7 @@ import java.util.List;
 public class MotionRecognizer {
 
 
-    public static String recognizeAction(List<XYZ> data) {
+    public static List<Actions> recognizeAction(List<XYZ> data) {
         double yMean = data.stream().mapToDouble(p -> p.y).average().orElse(0.0);
         double zMean = data.stream().mapToDouble(p -> p.z).average().orElse(0.0);
 
@@ -22,9 +24,9 @@ public class MotionRecognizer {
         double xVariance = data.stream().mapToDouble(p -> Math.pow(p.x - data.get(0).x, 2)).sum() / data.size();
 
 
-        double yAverage = data.stream().mapToDouble(XYZ::getX).average().getAsDouble();
-        double zAverage = data.stream().mapToDouble(XYZ::getY).average().getAsDouble();
-        double xAverage = data.stream().mapToDouble(XYZ::getZ).average().getAsDouble();
+        double xAverage = data.stream().mapToDouble(XYZ::getX).average().getAsDouble();
+        double yAverage = data.stream().mapToDouble(XYZ::getY).average().getAsDouble();
+        double zAverage = data.stream().mapToDouble(XYZ::getZ).average().getAsDouble();
 
         System.out.println("============================================");
         System.out.println("xVariance = " + xVariance);
@@ -33,33 +35,49 @@ public class MotionRecognizer {
 
         System.out.println();
 
+        System.out.println("xAverage = " + xAverage);
         System.out.println("yAverage = " + yAverage);
         System.out.println("zAverage = " + zAverage);
-        System.out.println("xAverage = " + xAverage);
         System.out.println("============================================");
-        final double recognizeBase = 0.3;//越高，其贴合度越高 越容易被识别为一个动作
+
+        final double maxVariance = 99999;
+        final double recognizeBaseA = 1.5;//检测系数
+        final double recognizeBaseB = 1.5;//检测系数
+
+
+        List<Actions> actions = new ArrayList<>();//存储可能的动作
 
         if (
-                isStatic(xAverage, 2)
-                        && isStatic(yAverage, 2)
-                        && isStatic(zAverage, 2)
-                        && isStatic(xVariance, 1)
-                        && isStatic(yVariance, 1)
-                        && isStatic(zVariance, 1)
+                isInRange(xAverage, 2)
+                        && isInRange(yAverage, 2)
+                        && isInRange(zAverage, 2)
+                        && isInRange(xVariance, 1)
+                        && isInRange(yVariance, 1)
+                        && isInRange(zVariance, 1)
         ) {
-            return "水平静止";
+            actions.add(Actions.STATIC);
         }
-        if (yVariance > 100 && zVariance < yVariance * recognizeBase && xVariance < yVariance * recognizeBase) {
-            return "竖直平面内点双击";
+//        if (yVariance > 100 && zVariance < yVariance * recognizeBase && xVariance < yVariance * recognizeBase) {
+//            return "竖直平面内点双击";
+//        }
+        if (
+                Math.abs(yAverage) > Math.abs(xAverage) * recognizeBaseA
+                        && isInRange(xVariance, 0, (yVariance + zVariance) / (recognizeBaseB * 2))
+                        && isInRange(yVariance, xVariance * recognizeBaseB, maxVariance)
+                        && isInRange(zVariance, xVariance * recognizeBaseB, maxVariance)
+
+        ) {
+            actions.add(Actions.CLICK);
         }
-        if (yVariance > 50 && zVariance < yVariance * recognizeBase && xVariance < yVariance * recognizeBase) {
-            return "竖直平面内点击";
-        }
-        return "错误";
+        return actions;
     }
 
-    private static boolean isStatic(double value, double range) {
+    private static boolean isInRange(double value, double range) {
         return Math.abs(value) < Math.abs(range);
+    }
+
+    private static boolean isInRange(double value, double from, double to) {
+        return Math.abs(value) > from && Math.abs(value) < to;
     }
 
 

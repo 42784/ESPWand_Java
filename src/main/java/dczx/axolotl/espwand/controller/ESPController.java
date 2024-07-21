@@ -2,6 +2,7 @@ package dczx.axolotl.espwand.controller;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import dczx.axolotl.espwand.entity.Actions;
 import dczx.axolotl.espwand.entity.XYZ;
 import dczx.axolotl.espwand.util.MotionRecognizer;
 import lombok.SneakyThrows;
@@ -43,9 +44,10 @@ public class ESPController {
 //        });
 
 
-        String action = MotionRecognizer.recognizeAction(list);
-        System.out.println("识别动作: " + action);
-        if (action.equals("竖直平面内点双击")) {
+        List<Actions> actions = MotionRecognizer.recognizeAction(list);
+        if (actions.isEmpty()) actions.add(Actions.NULL);
+        System.out.println("识别动作: " + actions);
+        if (actions.contains(Actions.CLICK)) {
             isOpen = !isOpen;
         }
 
@@ -66,8 +68,6 @@ public class ESPController {
 
     @RequestMapping(path = "/isOpen")
     public static ResponseEntity<String> isOpen() {
-        System.out.println("isOpen = " + isOpen);
-
         return isOpen ?
                 ResponseEntity.ok("开灯") :
                 ResponseEntity.ok("关灯");
@@ -76,9 +76,10 @@ public class ESPController {
     @RequestMapping(path = "/setOpen")
     public static ResponseEntity<String> setOpen(boolean open) {
         isOpen = open;
-        System.out.println("setOpen: " + isOpen);
+        System.out.println("Set to: " + isOpen);
         return ResponseEntity.ok("OK");
     }
+
     @RequestMapping(path = "/changeOpen")
     public static ResponseEntity<String> changeOpen() {
         isOpen = !isOpen;
